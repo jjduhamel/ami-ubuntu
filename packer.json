@@ -1,0 +1,49 @@
+{
+  "variables": {
+    "aws_region": "us-west-2",
+    "base_ami": "ami-a58d0dc5",
+    "vpc_id": "{{ env `VPC_ID` }}",
+    "subnet_id": "{{ env `SUBNET_ID` }}"
+  },
+  "builders": [{
+    "type": "amazon-ebs",
+    "region": "{{ user `aws_region` }}",
+    "source_ami": "{{ user `base_ami` }}",
+    "vpc_id": "{{ user `vpc_id` }}",
+    "subnet_id": "{{ user `subnet_id` }}",
+    "instance_type": "t2.nano",
+    "ssh_username": "ubuntu",
+    "ami_name": "hbpcb-ubuntu_{{ timestamp }}"
+  }],
+  "provisioners": [{
+    "type": "file",
+    "source": "etc",
+    "destination": "/tmp/etc"
+  }, {
+    "type": "file",
+    "source": "opt",
+    "destination": "/tmp/opt"
+  }, {
+    "type": "shell",
+    "inline": [
+      "sleep 30",
+      "set -x",
+      "sudo cp -vr /tmp/etc/. /etc && sudo cp -vr /tmp/opt/. /opt",
+      "sudo apt-get upgrade -y",
+      "sudo apt-get update && sudo apt-get install -y build-essential curl dnsutils libssl-dev libffi-dev python-dev unzip vim",
+      "printf \"\n  -----\n  Install Credstash\n  -----\n\n\"",
+      "curl --retry 3 https://bootstrap.pypa.io/get-pip.py | sudo python",
+      "sudo pip install credstash",
+      "printf \"\n  -----\n  Install DUO (login_duo)\n  -----\n\n\"",
+      "mkdir -p /tmp/src && cd /tmp/src",
+      "wget https://dl.duosecurity.com/duo_unix-latest.tar.gz",
+      "mkdir duo_unix && tar -xzf duo_unix-latest.tar.gz -C duo_unix --strip-components 1",
+      "cd duo_unix && ./configure --prefix=/usr && make && sudo make install",
+      "sudo bash -c 'printf \"\\n\\n# Enable Duo TFA\\n#ForceCommand /usr/sbin/login_duo\" >> /etc/ssh/sshd_config'",
+      "printf \"\n  -----\n  Clean Up\n  -----\n\n\"",
+      "cd && sudo rm -rf /tmp/*",
+      "sudo apt-get purge -y build-essential && sudo apt-get autoremove -y",
+      "set +x"
+    ]
+  }]
+}

@@ -1,0 +1,6 @@
+{
+  "aws_region": "",
+  "base_ami": "",
+  "vpc_id": "",
+  "subnet_id": ""
+}
